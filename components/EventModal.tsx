@@ -8,7 +8,7 @@ import { EVENT_COLORS, type CalendarEvent } from '@/lib/types'
 type Props = {
   mode: 'create' | 'edit'
   initialStart: Date
-  initialEnd: Date
+  initialEnd: Date | null
   event?: CalendarEvent
   onClose: () => void
   onSaved: () => void
@@ -27,7 +27,8 @@ export default function EventModal({ mode, initialStart, initialEnd, event, onCl
   const [title, setTitle] = useState(event?.title ?? '')
   const [description, setDescription] = useState(event?.description ?? '')
   const [startStr, setStartStr] = useState(toLocalInput(event ? new Date(event.start_at) : initialStart))
-  const [endStr, setEndStr] = useState(toLocalInput(event ? new Date(event.end_at) : initialEnd))
+  const endDefault = event?.end_at ? new Date(event.end_at) : initialEnd ?? new Date(initialStart.getTime() + 3600000)
+  const [endStr, setEndStr] = useState(toLocalInput(endDefault))
   const [allDay, setAllDay] = useState(event?.all_day ?? false)
   const [color, setColor] = useState(event?.color ?? 'blue')
   const [error, setError] = useState('')
@@ -47,8 +48,8 @@ export default function EventModal({ mode, initialStart, initialEnd, event, onCl
     setError('')
 
     const startDate = new Date(startStr)
-    const endDate = new Date(endStr)
-    if (endDate <= startDate) { setError('End must be after start'); return }
+    const endDate = endStr ? new Date(endStr) : null
+    if (endDate && endDate <= startDate) { setError('End must be after start'); return }
 
     startTransition(async () => {
       try {
@@ -56,7 +57,7 @@ export default function EventModal({ mode, initialStart, initialEnd, event, onCl
           title: title.trim(),
           description: description.trim() || undefined,
           start_at: startDate.toISOString(),
-          end_at: endDate.toISOString(),
+          end_at: endDate?.toISOString(),
           all_day: allDay,
           color,
         }

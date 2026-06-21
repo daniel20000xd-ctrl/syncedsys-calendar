@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalIcon } from 'lucide-react'
 import MonthView from './views/MonthView'
 import WeekView from './views/WeekView'
 import DayView from './views/DayView'
 import EventModal from './EventModal'
 import { updateEvent } from '@/app/actions/events'
-import type { CalendarEvent, ViewMode } from '@/lib/types'
+import { findConflictIds, type CalendarEvent, type ViewMode } from '@/lib/types'
 
 type ModalState =
   | { open: false }
@@ -69,6 +69,8 @@ export default function Calendar() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [modal, setModal] = useState<ModalState>({ open: false })
 
+  const conflictIds = useMemo(() => findConflictIds(events), [events])
+
   const fetchEvents = useCallback(async (v: ViewMode, d: Date) => {
     const { start, end } = getViewRange(v, d)
     try {
@@ -95,8 +97,9 @@ export default function Calendar() {
     const ev = events.find(e => e.id === eventId)
     if (!ev) return
     const origStart = new Date(ev.start_at)
-    const origEnd = new Date(ev.end_at)
-    const dur = origEnd.getTime() - origStart.getTime()
+    const dur = ev.end_at
+      ? new Date(ev.end_at).getTime() - origStart.getTime()
+      : 3600000
 
     const newStart = new Date(newDate)
     newStart.setHours(origStart.getHours(), origStart.getMinutes(), 0, 0)
@@ -140,7 +143,6 @@ export default function Calendar() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Today */}
           <button
             onClick={() => setCurrentDate(new Date())}
             className="px-3 py-1 text-xs border border-[#2a2a2a] rounded-lg text-[#888] hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors"
@@ -148,7 +150,6 @@ export default function Calendar() {
             Today
           </button>
 
-          {/* Nav */}
           <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentDate(d => navigate(view, d, -1))}
@@ -164,7 +165,6 @@ export default function Calendar() {
             </button>
           </div>
 
-          {/* View toggle */}
           <div className="flex items-center bg-[#111] border border-[#242424] rounded-lg overflow-hidden">
             {(['month', 'week', 'day'] as ViewMode[]).map(v => (
               <button
@@ -186,6 +186,7 @@ export default function Calendar() {
           <MonthView
             currentDate={currentDate}
             events={events}
+            conflictIds={conflictIds}
             onDayClick={(date) => openCreate(date)}
             onEventClick={(ev) => setModal({ open: true, mode: 'edit', event: ev })}
             onEventDrop={handleEventDrop}
@@ -195,6 +196,7 @@ export default function Calendar() {
           <WeekView
             currentDate={currentDate}
             events={events}
+            conflictIds={conflictIds}
             onSlotClick={(date) => openCreate(date)}
             onEventClick={(ev) => setModal({ open: true, mode: 'edit', event: ev })}
             onEventChange={handleEventChange}
@@ -204,6 +206,7 @@ export default function Calendar() {
           <DayView
             currentDate={currentDate}
             events={events}
+            conflictIds={conflictIds}
             onSlotClick={(date) => openCreate(date)}
             onEventClick={(ev) => setModal({ open: true, mode: 'edit', event: ev })}
             onEventChange={handleEventChange}
@@ -211,12 +214,11 @@ export default function Calendar() {
         )}
       </main>
 
-      {/* Modal */}
       {modal.open && (
         <EventModal
           mode={modal.mode}
           initialStart={modal.mode === 'create' ? modal.start : new Date(modal.event.start_at)}
-          initialEnd={modal.mode === 'create' ? modal.end : new Date(modal.event.end_at)}
+          initialEnd={modal.mode === 'create' ? modal.end : (modal.event.end_at ? new Date(modal.event.end_at) : null)}
           event={modal.mode === 'edit' ? modal.event : undefined}
           onClose={() => setModal({ open: false })}
           onSaved={onSaved}

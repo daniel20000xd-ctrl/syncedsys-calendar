@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { eventColorClass, eventBorderClass, type CalendarEvent } from '@/lib/types'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -11,6 +12,7 @@ const SNAP = 15
 type Props = {
   currentDate: Date
   events: CalendarEvent[]
+  conflictIds: Set<string>
   onSlotClick: (date: Date) => void
   onEventClick: (event: CalendarEvent) => void
   onEventChange: (eventId: string, start: Date, end: Date) => void
@@ -50,11 +52,11 @@ function layoutEvents(evs: CalendarEvent[]): Array<CalendarEvent & { col: number
 
   for (const ev of sorted) {
     const start = new Date(ev.start_at).getTime()
-    const end = new Date(ev.end_at).getTime()
+    const end = ev.end_at ? new Date(ev.end_at).getTime() : new Date(ev.start_at).getTime() + 3600000
     let placed = false
 
     for (const group of groups) {
-      const lastEnd = Math.max(...group.map(e => new Date(e.end_at).getTime()))
+      const lastEnd = Math.max(...group.map(e => e.end_at ? new Date(e.end_at).getTime() : new Date(e.start_at).getTime() + 3600000))
       if (start < lastEnd) {
         const col = group.length
         const item = { ...ev, col, cols: 1 }
@@ -80,7 +82,7 @@ function layoutEvents(evs: CalendarEvent[]): Array<CalendarEvent & { col: number
   return result
 }
 
-export default function WeekView({ currentDate, events, onSlotClick, onEventClick, onEventChange }: Props) {
+export default function WeekView({ currentDate, events, conflictIds, onSlotClick, onEventClick, onEventChange }: Props) {
   const gridRef = useRef<HTMLDivElement>(null)
   const weekStart = startOfWeek(currentDate)
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -134,7 +136,7 @@ export default function WeekView({ currentDate, events, onSlotClick, onEventClic
       type: 'move',
       eventId: ev.id,
       origStart: new Date(ev.start_at),
-      origEnd: new Date(ev.end_at),
+      origEnd: ev.end_at ? new Date(ev.end_at) : new Date(new Date(ev.start_at).getTime() + 3600000),
       startY: e.clientY,
       startDayIdx: dayIdx,
     })
@@ -145,7 +147,7 @@ export default function WeekView({ currentDate, events, onSlotClick, onEventClic
     setDrag({
       type: 'resize',
       eventId: ev.id,
-      origEnd: new Date(ev.end_at),
+      origEnd: ev.end_at ? new Date(ev.end_at) : new Date(new Date(ev.start_at).getTime() + 3600000),
       startY: e.clientY,
     })
   }
@@ -230,17 +232,20 @@ export default function WeekView({ currentDate, events, onSlotClick, onEventClic
                 {laid.map(ev => {
                   const p = preview.get(ev.id)
                   const startDate = p ? p.start : new Date(ev.start_at)
-                  const endDate = p ? p.end : new Date(ev.end_at)
+                  const rawEnd = ev.end_at ? new Date(ev.end_at) : new Date(new Date(ev.start_at).getTime() + 3600000)
+                  const endDate = p ? p.end : rawEnd
                   const top = minutesFromMidnight(startDate) * PX_PER_MIN
                   const dur = Math.max(15, (endDate.getTime() - startDate.getTime()) / 60000)
                   const height = dur * PX_PER_MIN
                   const widthPct = 100 / ev.cols
                   const leftPct = ev.col * widthPct
+                  const isConflict = conflictIds.has(ev.id)
 
                   return (
                     <div
                       key={ev.id}
-                      className={`absolute rounded overflow-hidden border-l-2 ${eventColorClass(ev.color)} ${eventBorderClass(ev.color)} opacity-90 group`}
+                      className={`absolute rounded overflow-hidden border-l-2 ${eventColorClass(ev.color)} ${eventBorderClass(ev.color)} opacity-90 group
+                        ${isConflict ? 'ring-1 ring-amber-400' : ''}`}
                       style={{
                         top,
                         height: Math.max(height, 18),
@@ -253,10 +258,10 @@ export default function WeekView({ currentDate, events, onSlotClick, onEventClic
                       onMouseDown={(e) => startMove(ev, e, dayIdx)}
                       onClick={(e) => { e.stopPropagation(); if (!drag) onEventClick(ev) }}
                     >
-                      <div className="px-1 py-0.5 text-[10px] text-white font-medium leading-tight truncate pointer-events-none">
+                      <div className="px-1 py-0.5 text-[10px] text-white font-medium leading-tight truncate pointer-events-none flex items-center gap-0.5">
+                        {isConflict && <AlertTriangle size={8} className="text-amber-300 shrink-0" />}
                         {ev.title}
                       </div>
-                      {/* Resize handle */}
                       <div
                         className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100"
                         onMouseDown={(e) => { e.stopPropagation(); startResize(ev, e) }}

@@ -4,18 +4,27 @@ export type CalendarEvent = {
   title: string
   description: string | null
   start_at: string
-  end_at: string
+  end_at: string | null
   all_day: boolean
   color: string | null
   created_at: string
   updated_at: string
 }
 
+export type CalendarReminder = {
+  id: string
+  event_id: string
+  user_id: string
+  minutes_before: number
+  sent_at: string | null
+  created_at: string
+}
+
 export type EventInput = {
   title: string
   description?: string
   start_at: string
-  end_at: string
+  end_at?: string
   all_day?: boolean
   color?: string
 }
@@ -40,4 +49,34 @@ export function eventColorClass(color: string | null | undefined): string {
 export function eventBorderClass(color: string | null | undefined): string {
   const found = EVENT_COLORS.find(c => c.value === color)
   return found ? found.border : 'border-blue-500'
+}
+
+export function effectiveEnd(ev: Pick<CalendarEvent, 'start_at' | 'end_at'>): Date {
+  if (ev.end_at) return new Date(ev.end_at)
+  return new Date(new Date(ev.start_at).getTime() + 3600000)
+}
+
+export function eventsConflict(
+  a: Pick<CalendarEvent, 'start_at' | 'end_at'>,
+  b: Pick<CalendarEvent, 'start_at' | 'end_at'>,
+): boolean {
+  const aStart = new Date(a.start_at)
+  const aEnd = effectiveEnd(a)
+  const bStart = new Date(b.start_at)
+  const bEnd = effectiveEnd(b)
+  return aStart < bEnd && aEnd > bStart
+}
+
+export function findConflictIds(events: CalendarEvent[]): Set<string> {
+  const conflicting = new Set<string>()
+  for (let i = 0; i < events.length; i++) {
+    for (let j = i + 1; j < events.length; j++) {
+      if (events[i].all_day || events[j].all_day) continue
+      if (eventsConflict(events[i], events[j])) {
+        conflicting.add(events[i].id)
+        conflicting.add(events[j].id)
+      }
+    }
+  }
+  return conflicting
 }
