@@ -55,6 +55,7 @@ create table if not exists calendar_reminders (
   event_id       uuid references calendar_events(id) on delete cascade not null,
   user_id        uuid references auth.users not null,
   minutes_before integer not null,
+  custom_message text,
   sent_at        timestamptz,
   created_at     timestamptz default now()
 );
@@ -81,6 +82,7 @@ create policy "Users can delete their own reminders"
   on calendar_reminders for delete
   using (auth.uid() = user_id);
 
--- ── Migration: make end_at nullable on existing deployments ──────────────────
--- Safe to run even if the column is already nullable.
+-- ── Migrations ───────────────────────────────────────────────────────────────
+-- Safe to run even if already applied.
 alter table calendar_events alter column end_at drop not null;
+alter table calendar_reminders add column if not exists custom_message text;
