@@ -1,8 +1,14 @@
 -- ── Reminder dispatch ────────────────────────────────────────────────────────
--- Every 15 minutes, on the quarter hour (:00 :15 :30 :45), call the calendar
--- app's cron route. That route sends any due, unsent reminder by email and
--- stamps calendar_reminders.sent_at. Missed runs self-heal — the route sends
--- everything overdue, not just a forward window.
+-- Every 15 minutes at :01 :16 :31 :46 — deliberately one minute past the quarter
+-- hour. Reminders are usually scheduled on the quarter hour (event on the :00,
+-- lead time a multiple of 15), so their trigger lands exactly on a :00/:15/etc.
+-- The 1-minute offset guarantees the route's wall clock is safely past that
+-- trigger even with clock skew between the Postgres and Vercel hosts — otherwise
+-- a "just missed it" pushes the reminder a full 15 minutes late.
+--
+-- The route sends any due, unsent reminder by email and stamps
+-- calendar_reminders.sent_at. Missed runs self-heal — it sends everything
+-- overdue, not just a forward window.
 --
 -- One-time setup in the Supabase dashboard:
 --   1. Database → Extensions: enable `pg_cron` and `pg_net`.
@@ -22,7 +28,7 @@ end $$;
 
 select cron.schedule(
   'calendar-reminders',
-  '*/15 * * * *',
+  '1,16,31,46 * * * *',
   $$
   select net.http_get(
     url := 'https://calendar.syncedsys.com/api/cron/reminders',
