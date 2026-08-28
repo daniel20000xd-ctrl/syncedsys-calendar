@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendReminderEmail } from '@/lib/email'
+import { cleanEnv } from '@/lib/clean-env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,7 +19,7 @@ type EventShape = {
 }
 
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
+  const secret = cleanEnv(process.env.CRON_SECRET)
   if (!secret) {
     return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
   }

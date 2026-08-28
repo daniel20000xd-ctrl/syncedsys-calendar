@@ -1,11 +1,12 @@
 import { Resend } from 'resend'
+import { cleanEnv } from '@/lib/clean-env'
 
 const FROM = 'Syncedsys Calendar <calendar@syncedsys.com>'
 
 let _resend: Resend | null = null
 function resend(): Resend {
   if (!_resend) {
-    const key = process.env.RESEND_API_KEY
+    const key = cleanEnv(process.env.RESEND_API_KEY)
     if (!key) throw new Error('RESEND_API_KEY not configured')
     _resend = new Resend(key)
   }
