@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import Calendar from '@/components/Calendar'
 
 export default async function Page() {
   const supabase = await createClient()
@@ -11,8 +10,8 @@ export default async function Page() {
   }
 
   return (
-    <div className="h-screen">
-      <Calendar />
+    <div className="h-screen flex items-center justify-center text-sm text-[#555]">
+      Calendar UI removed — rebuild in progress.
     </div>
   )
 }
