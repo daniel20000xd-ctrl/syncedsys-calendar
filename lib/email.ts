@@ -27,8 +27,9 @@ export async function sendReminderEmail(
   minutesBefore: number,
   customMessage?: string,
 ) {
+  const days = Math.round(minutesBefore / 1440)
   const when = minutesBefore >= 1440
-    ? 'tomorrow'
+    ? days === 1 ? 'tomorrow' : `in ${days} days`
     : minutesBefore >= 60
     ? `in ${minutesBefore / 60} hour${minutesBefore / 60 === 1 ? '' : 's'}`
     : `in ${minutesBefore} minute${minutesBefore === 1 ? '' : 's'}`
