@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "syncedsys-calendar": {
+      "command": "node",
+      "args": [
+        "--env-file=A:\\Projects\\syncedsys-calendar\\.env.local",
+        "--env-file=A:\\Projects\\syncedsys-calendar\\mcp\\.env",
+        "A:\\Projects\\syncedsys-calendar\\mcp\\server.mjs"
+      ]
+    }
+  }
+}

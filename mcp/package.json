@@ -1,0 +1,16 @@
+{
+  "name": "syncedsys-calendar-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local stdio MCP server for reading and adding events to the Syncedsys calendar",
+  "scripts": {
+    "start": "node --env-file=../.env.local --env-file=.env server.mjs",
+    "whoami": "node --env-file=../.env.local --env-file=.env whoami.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@supabase/supabase-js": "^2.107.0",
+    "ws": "^8.18.0"
+  }
+}
