@@ -268,6 +268,8 @@ async function addEvent(args = {}) {
         `reminder ${r.minutes_before} min before has a trigger time in the past — the reminder cron only sends future reminders, so it will not fire`
     );
 
+  const googleLine = await syncToGoogle(event.id);
+
   const lines = [
     `Created "${event.title}"  (id ${event.id})`,
     `  start: ${fmt(event.start_at)}${
@@ -283,10 +285,46 @@ async function addEvent(args = {}) {
           }`
       )
       .join(", ")}`,
+    googleLine,
     ...warnings.map((w) => "  WARNING: " + w),
   ].filter(Boolean);
 
   return text(lines.join("\n"));
+}
+
+// Best-effort mirror of a just-created event into Google Calendar via the
+// deployed calendar app's /api/sync/google route. Never throws — returns a
+// single status line for the tool output.
+async function syncToGoogle(eventId) {
+  const secret = process.env.CRON_SECRET;
+  const base = process.env.SYNC_BASE_URL || "https://calendar.syncedsys.com";
+  if (!secret) return "  google: skipped (SYNC not configured)";
+  try {
+    const res = await fetch(`${base}/api/sync/google`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify({ eventId }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok && j.ok) {
+      let line = `  google: synced (${j.googleEventId})`;
+      if (Array.isArray(j.warnings) && j.warnings.length) {
+        line += j.warnings.map((w) => `\n  google warning: ${w}`).join("");
+      }
+      return line;
+    }
+    if (res.ok && j.skipped) {
+      return `  google: ${j.skipped} (${j.googleEventId})`;
+    }
+    const msg = j.detail || j.error || `HTTP ${res.status}`;
+    return `  google: NOT synced — ${msg}. Event saved in Syncedsys; reconnect Google in the hub if the token expired.`;
+  } catch (e) {
+    return `  google: NOT synced — ${e?.message ?? e}. Event saved in Syncedsys.`;
+  }
 }
 
 async function readCalendar(args = {}) {
